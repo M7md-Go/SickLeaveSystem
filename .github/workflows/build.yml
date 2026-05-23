@@ -9,31 +9,31 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    # تم التحديث إلى v4
     - uses: actions/checkout@v4
 
-    # تم التحديث إلى v4
+    # 1. فك ضغط الملف في المجلد الرئيسي مباشرة
     - name: Unzip Project Files
       run: |
         if (Test-Path *.zip) {
-          Expand-Archive -Path *.zip -DestinationPath "./Project_extracted" -Force
+          Expand-Archive -Path *.zip -DestinationPath "." -Force
+          Remove-Item *.zip
         }
 
-    # تم التحديث إلى v4
+    # 2. تثبيت دوت نت (تم إضافة الإصدار 6 و 7 و 8 معاً لضمان التوافق التام)
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: |
+          6.0.x
+          7.0.x
+          8.0.x
 
+    # 3. البحث التلقائي عن ملف المشروع وبنائه
     - name: Publish Build
       run: |
-        if (Test-Path "./Project_extracted") {
-          dotnet publish "./Project_extracted" -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true
-        } else {
-          dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true
-        }
+        dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true
 
-    # تم التحديث إلى v4 ليتوافق مع السيرفرات الحالية
+    # 4. رفع الملف التنفيذي الناتج
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
