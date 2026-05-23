@@ -19,14 +19,16 @@ jobs:
           Remove-Item *.zip
         }
 
-    # 2. إضافة أداة MSBuild الخاصة بالنسخ الكلاسيكية إلى النظام
+    # 2. إضافة أداة MSBuild و NuGet إلى النظام
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    # 3. استعادة أي مكتبات NuGet قديمة خاصة بالمشروع
-    - name: Setup NuGet
-      uses: nuget/setup-nuget@v1
-      
+    # 3. خطوة الحل الجذري: تحميل حزم الاستهداف لإصدار .NET 4.0 وتثبيتها سحابياً ليتعرف عليها السيرفر
+    - name: Install .NET Framework 4.0 Targeting Pack
+      run: |
+        nuget install Microsoft.NETFramework.ReferenceAssemblies.net40 -Version 1.0.3 -OutputDirectory ./packages
+
+    # 4. استعادة أي مكتبات NuGet خاصة بالمشروع مع ربطها بالحزم المحملة
     - name: Restore NuGet Packages
       run: |
         $projectFile = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
@@ -34,21 +36,21 @@ jobs:
             nuget restore $projectFile.FullName
         }
 
-    # 4. بناء المشروع بالإعدادات الافتراضية للملف لتفادي تعارض الخصائص
+    # 5. بناء المشروع باستخدام حزم الاستهداف الجديدة
     - name: Build with MSBuild
       run: |
         $projectFile = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
         if ($projectFile) {
             Write-Host "Building project: $($projectFile.FullName)"
-            msbuild $($projectFile.FullName) /t:Build /p:DeployOnBuild=true
+            msbuild $($projectFile.FullName) /t:Build /p:Configuration=Release /p:TargetFrameworkRootPath="${{ github.workspace }}/packages/Microsoft.NETFramework.ReferenceAssemblies.net40.1.0.3/build/.NETFramework/"
         } else {
             Write-Error "No .csproj file found!"
             exit 1
         }
 
-    # 5. رفع المجلد النهائي الذي يحتوي على الملفات الناتجة (سواء كانت في Debug أو Release)
+    # 6. رفع المجلد النهائي الذي يحتوي على ملف الـ EXE
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: MyCSharpAppExecutable
-        path: "**/bin/"
+        path: "**/bin/Release/"
