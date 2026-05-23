@@ -34,21 +34,21 @@ jobs:
             nuget restore $projectFile.FullName
         }
 
-    # 4. بناء المشروع باستخدام MSBuild المتوافق مع إصدار 4.0
+    # 4. بناء المشروع بالإعدادات الافتراضية للملف لتفادي تعارض الخصائص
     - name: Build with MSBuild
       run: |
         $projectFile = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
         if ($projectFile) {
             Write-Host "Building project: $($projectFile.FullName)"
-            msbuild $($projectFile.FullName) /p:Configuration=Release /p:Platform="Any CPU"
+            msbuild $($projectFile.FullName) /t:Build /p:DeployOnBuild=true
         } else {
             Write-Error "No .csproj file found!"
             exit 1
         }
 
-    # 5. رفع المجلد النهائي الذي يحتوي على ملف الـ EXE
+    # 5. رفع المجلد النهائي الذي يحتوي على الملفات الناتجة (سواء كانت في Debug أو Release)
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: MyCSharpAppExecutable
-        path: "**/bin/Release/"
+        path: "**/bin/"
