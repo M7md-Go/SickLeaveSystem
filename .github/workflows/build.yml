@@ -1,0 +1,32 @@
+name: Build C# Application
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    # هذه الخطوة الإضافية تقوم بفك ضغط ملفك أونلاين تلقائياً
+    - name: Unzip Project Files
+      run: |
+        Expand-Archive -Path *.zip -DestinationPath ./Project extracted
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
+    # البناء من المجلد الذي تم فك الضغط فيه
+    - name: Publish Build
+      run: dotnet publish "./Project extracted" -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: MyCSharpAppExecutable
+        path: "**/bin/Release/**/publish/"
