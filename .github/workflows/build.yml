@@ -9,24 +9,33 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    # تم التحديث إلى v4
+    - uses: actions/checkout@v4
 
-    # هذه الخطوة الإضافية تقوم بفك ضغط ملفك أونلاين تلقائياً
+    # تم التحديث إلى v4
     - name: Unzip Project Files
       run: |
-        Expand-Archive -Path *.zip -DestinationPath ./Project extracted
+        if (Test-Path *.zip) {
+          Expand-Archive -Path *.zip -DestinationPath "./Project_extracted" -Force
+        }
 
+    # تم التحديث إلى v4
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
 
-    # البناء من المجلد الذي تم فك الضغط فيه
     - name: Publish Build
-      run: dotnet publish "./Project extracted" -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true
+      run: |
+        if (Test-Path "./Project_extracted") {
+          dotnet publish "./Project_extracted" -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true
+        } else {
+          dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true
+        }
 
+    # تم التحديث إلى v4 ليتوافق مع السيرفرات الحالية
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: MyCSharpAppExecutable
         path: "**/bin/Release/**/publish/"
