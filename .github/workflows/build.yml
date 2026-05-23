@@ -11,7 +11,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # 1. فك ضغط الملف في المجلد الرئيسي مباشرة
+    # 1. فك ضغط ملف الـ ZIP
     - name: Unzip Project Files
       run: |
         if (Test-Path *.zip) {
@@ -19,7 +19,7 @@ jobs:
           Remove-Item *.zip
         }
 
-    # 2. تثبيت دوت نت (تم إضافة الإصدار 6 و 7 و 8 معاً لضمان التوافق التام)
+    # 2. تثبيت إصدارات دوت نت
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -28,12 +28,19 @@ jobs:
           7.0.x
           8.0.x
 
-    # 3. البحث التلقائي عن ملف المشروع وبنائه
+    # 3. البحث التلقائي عن ملف الـ csproj داخل أي مجلد فرعي وبنائه مباشرة
     - name: Publish Build
       run: |
-        dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true
+        $projectFile = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
+        if ($projectFile) {
+            Write-Host "Found project file at: $($projectFile.FullName)"
+            dotnet publish $($projectFile.FullName) -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true
+        } else {
+            Write-Error "No .csproj file found in the repository!"
+            exit 1
+        }
 
-    # 4. رفع الملف التنفيذي الناتج
+    # 4. رفع الملف التنفيذي الناتج من أي مجلد فرعي تم البناء فيه
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
