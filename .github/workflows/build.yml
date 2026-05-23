@@ -1,4 +1,4 @@
-name: Build C# Application
+name: Build Legacy C# Application
 
 on:
   push:
@@ -19,30 +19,36 @@ jobs:
           Remove-Item *.zip
         }
 
-    # 2. تثبيت إصدارات دوت نت
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: |
-          6.0.x
-          7.0.x
-          8.0.x
+    # 2. إضافة أداة MSBuild الخاصة بالنسخ الكلاسيكية إلى النظام
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
 
-    # 3. البحث التلقائي عن ملف الـ csproj داخل أي مجلد فرعي وبنائه مباشرة
-    - name: Publish Build
+    # 3. استعادة أي مكتبات NuGet قديمة خاصة بالمشروع
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v1
+      
+    - name: Restore NuGet Packages
       run: |
         $projectFile = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
         if ($projectFile) {
-            Write-Host "Found project file at: $($projectFile.FullName)"
-            dotnet publish $($projectFile.FullName) -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true
+            nuget restore $projectFile.FullName
+        }
+
+    # 4. بناء المشروع باستخدام MSBuild المتوافق مع إصدار 4.0
+    - name: Build with MSBuild
+      run: |
+        $projectFile = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
+        if ($projectFile) {
+            Write-Host "Building project: $($projectFile.FullName)"
+            msbuild $($projectFile.FullName) /p:Configuration=Release /p:Platform="Any CPU"
         } else {
-            Write-Error "No .csproj file found in the repository!"
+            Write-Error "No .csproj file found!"
             exit 1
         }
 
-    # 4. رفع الملف التنفيذي الناتج من أي مجلد فرعي تم البناء فيه
+    # 5. رفع المجلد النهائي الذي يحتوي على ملف الـ EXE
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: MyCSharpAppExecutable
-        path: "**/bin/Release/**/publish/"
+        path: "**/bin/Release/"
